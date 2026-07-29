@@ -21,7 +21,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "common.h"
+#include "mpu6050.h"
 
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,7 +49,9 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+SensorData_t Sensor;
 
+char TxBuffer[128];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -94,6 +100,16 @@ int main(void)
   MX_I2C1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+  HAL_Delay(1000);
+
+  MPU6050_Init();
+
+  sprintf(TxBuffer,"\r\n===== NODE1 STARTED =====\r\n");
+
+  HAL_UART_Transmit(&huart2,
+                    (uint8_t *)TxBuffer,
+                    strlen(TxBuffer),
+                    HAL_MAX_DELAY);
 
   /* USER CODE END 2 */
 
@@ -101,6 +117,23 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(MPU6050_ReadRawData(&Sensor) == HAL_OK)
+	      {
+	          sprintf(TxBuffer,
+	                  "AX:%6d AY:%6d AZ:%6d\r\n",
+	                  Sensor.Ax,
+	                  Sensor.Ay,
+	                  Sensor.Az);
+
+	          HAL_UART_Transmit(&huart2,
+	                            (uint8_t *)TxBuffer,
+	                            strlen(TxBuffer),
+	                            HAL_MAX_DELAY);
+	      }
+
+	      HAL_Delay(1000);
+
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

@@ -1,0 +1,4 @@
+../Core/Src/mpu6050.c:15:6:MPU6050_Init	1
+../Core/Src/mpu6050.c:30:19:MPU6050_ReadRawData	2
+../Core/Src/mpu6050.c:58:6:MPU6050_CalculateMagnitude	1
+../Core/Src/mpu6050.c:68:6:MPU6050_CalculateVibration	1

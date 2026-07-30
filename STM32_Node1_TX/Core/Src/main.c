@@ -118,21 +118,28 @@ int main(void)
   while (1)
   {
 	  if(MPU6050_ReadRawData(&Sensor) == HAL_OK)
-	      {
-	          sprintf(TxBuffer,
-	                  "AX:%6d AY:%6d AZ:%6d\r\n",
-	                  Sensor.Ax,
-	                  Sensor.Ay,
-	                  Sensor.Az);
+	     {
+	         /* Calculate Motion Magnitude */
+	         MPU6050_CalculateMagnitude(&Sensor);
 
-	          HAL_UART_Transmit(&huart2,
-	                            (uint8_t *)TxBuffer,
-	                            strlen(TxBuffer),
-	                            HAL_MAX_DELAY);
-	      }
+	         /* Calculate Vibration */
+	         MPU6050_CalculateVibration(&Sensor);
 
-	      HAL_Delay(1000);
+	         sprintf(TxBuffer,
+	                 "AX:%6d AY:%6d AZ:%6d MAG:%8.2f VIB:%8.2f\r\n",
+	                 Sensor.Ax,
+	                 Sensor.Ay,
+	                 Sensor.Az,
+	                 Sensor.Magnitude,
+	                 Sensor.Vibration);
 
+	         HAL_UART_Transmit(&huart2,
+	                           (uint8_t *)TxBuffer,
+	                           strlen(TxBuffer),
+	                           HAL_MAX_DELAY);
+	     }
+
+	     HAL_Delay(1000);
 
     /* USER CODE END WHILE */
 

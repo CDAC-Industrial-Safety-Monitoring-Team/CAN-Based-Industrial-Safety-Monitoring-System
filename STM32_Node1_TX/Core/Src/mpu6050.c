@@ -1,7 +1,7 @@
 /*
  * mpu6050.c
  *
- *  Created on: 19-Jul-2026
+ *
  *      Author: Moeen Sheikh
  */
 

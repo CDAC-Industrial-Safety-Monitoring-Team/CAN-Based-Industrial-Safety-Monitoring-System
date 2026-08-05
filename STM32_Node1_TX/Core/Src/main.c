@@ -21,11 +21,16 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
 #include "common.h"
 #include "mpu6050.h"
+#include "dht11.h"
+#include "safety_monitor.h"
+
 
 #include <stdio.h>
 #include <string.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -96,50 +101,64 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_I2C1_Init();
-  MX_USART2_UART_Init();
-  /* USER CODE BEGIN 2 */
-  HAL_Delay(1000);
+    MX_GPIO_Init();
+    MX_I2C1_Init();
+    MX_USART2_UART_Init();
+    /* USER CODE BEGIN 2 */
 
-  MPU6050_Init();
+    /* Wait for power to stabilize */
+    HAL_Delay(1000);
 
-  sprintf(TxBuffer,"\r\n===== NODE1 STARTED =====\r\n");
+    /* Initialize Sensors */
+    MPU6050_Init();
+    DHT11_Init();
 
-  HAL_UART_Transmit(&huart2,
-                    (uint8_t *)TxBuffer,
-                    strlen(TxBuffer),
-                    HAL_MAX_DELAY);
+    /* Startup Message */
+    sprintf(TxBuffer, "\r\n===== SAFETY MONITOR SYSTEM STARTED =====\r\n");
+    HAL_UART_Transmit(&huart2,
+                      (uint8_t *)TxBuffer,
+                      strlen(TxBuffer),
+                      HAL_MAX_DELAY);
 
-  /* USER CODE END 2 */
+
+    /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if(MPU6050_ReadRawData(&Sensor) == HAL_OK)
-	     {
-	         /* Calculate Motion Magnitude */
-	         MPU6050_CalculateMagnitude(&Sensor);
+	  if (SafetyMonitor_Update(&Sensor) == HAL_OK)
+	      {
 
-	         /* Calculate Vibration */
-	         MPU6050_CalculateVibration(&Sensor);
+	          /* Print Sensor Data */
+	          sprintf(TxBuffer,
+	                  "AX:%6d AY:%6d AZ:%6d | MAG:%8.2f | VIB:%8.2f | TEMP:%2dC | HUM:%2d%% | %s\r\n",
+	                  Sensor.Ax,
+	                  Sensor.Ay,
+	                  Sensor.Az,
+	                  Sensor.Magnitude,
+	                  Sensor.Vibration,
+	                  Sensor.Temperature,
+	                  Sensor.Humidity,
+	                  (Sensor.Status == STATUS_NORMAL) ? "NORMAL" : "EMERGENCY");
 
-	         sprintf(TxBuffer,
-	                 "AX:%6d AY:%6d AZ:%6d MAG:%8.2f VIB:%8.2f\r\n",
-	                 Sensor.Ax,
-	                 Sensor.Ay,
-	                 Sensor.Az,
-	                 Sensor.Magnitude,
-	                 Sensor.Vibration);
+	          HAL_UART_Transmit(&huart2,
+	                            (uint8_t *)TxBuffer,
+	                            strlen(TxBuffer),
+	                            HAL_MAX_DELAY);
+	      }
+	      else
+	      {
+	          sprintf(TxBuffer,
+	                  "Sensor Read Error\r\n");
 
-	         HAL_UART_Transmit(&huart2,
-	                           (uint8_t *)TxBuffer,
-	                           strlen(TxBuffer),
-	                           HAL_MAX_DELAY);
-	     }
+	          HAL_UART_Transmit(&huart2,
+	                            (uint8_t *)TxBuffer,
+	                            strlen(TxBuffer),
+	                            HAL_MAX_DELAY);
+	      }
 
-	     HAL_Delay(1000);
+	      HAL_Delay(1000);
 
     /* USER CODE END WHILE */
 
@@ -171,8 +190,8 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 50;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLN = 168;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -188,7 +207,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
   }
@@ -268,6 +287,7 @@ static void MX_USART2_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
   /* USER CODE BEGIN MX_GPIO_Init_1 */
 
   /* USER CODE END MX_GPIO_Init_1 */
@@ -275,6 +295,12 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin : PB1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

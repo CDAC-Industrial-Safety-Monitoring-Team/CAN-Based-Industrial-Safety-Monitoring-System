@@ -1,0 +1,2 @@
+../Core/Src/can_driver.c:15:6:CAN_Driver_Init	3
+../Core/Src/can_driver.c:41:19:CAN_ReceivePacket	3

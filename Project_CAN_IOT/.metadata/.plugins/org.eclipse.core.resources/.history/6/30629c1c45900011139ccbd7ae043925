@@ -1,0 +1,175 @@
+/*
+ * dht11.c
+ *
+ *  Created on: 19-Jul-2026
+ *      Author: Moeen Sheikh
+ */
+
+#include "dht11.h"
+
+/* DHT11 uses GPIOB Pin 1 */
+
+/*----------------------------------------------------------*/
+
+/* Change PB1 as Output */
+static void DHT11_SetPinOutput(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    GPIO_InitStruct.Pin = DHT11_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+
+    HAL_GPIO_Init(DHT11_PORT, &GPIO_InitStruct);
+}
+
+/*----------------------------------------------------------*/
+
+/* Change PB1 as Input */
+static void DHT11_SetPinInput(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    GPIO_InitStruct.Pin = DHT11_PIN;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+
+    HAL_GPIO_Init(DHT11_PORT, &GPIO_InitStruct);
+}
+
+/*----------------------------------------------------------*/
+
+/* DWT Delay Initialization */
+void DHT11_Init(void)
+{
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+
+    DWT->CYCCNT = 0;
+
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+}
+
+/*----------------------------------------------------------*/
+
+/* Microsecond Delay */
+static void DHT11_DelayUs(uint32_t us)
+{
+    uint32_t start = DWT->CYCCNT;
+
+    uint32_t ticks = us * (HAL_RCC_GetHCLKFreq() / 1000000);
+
+    while((DWT->CYCCNT - start) < ticks);
+}
+
+/*----------------------------------------------------------*/
+
+/* Send Start Signal and Check Response */
+static uint8_t DHT11_StartSignal(void)
+{
+    uint8_t response = 0;
+
+    /* MCU drives line LOW for at least 18 ms */
+    DHT11_SetPinOutput();
+
+    HAL_GPIO_WritePin(DHT11_PORT, DHT11_PIN, GPIO_PIN_RESET);
+
+    HAL_Delay(18);
+
+    /* Pull HIGH for 30 us */
+    HAL_GPIO_WritePin(DHT11_PORT, DHT11_PIN, GPIO_PIN_SET);
+
+    DHT11_DelayUs(30);
+
+    /* Release bus */
+    DHT11_SetPinInput();
+
+    /* Sensor pulls LOW */
+    DHT11_DelayUs(40);
+
+    if(HAL_GPIO_ReadPin(DHT11_PORT, DHT11_PIN) == GPIO_PIN_RESET)
+    {
+        DHT11_DelayUs(80);
+
+        if(HAL_GPIO_ReadPin(DHT11_PORT, DHT11_PIN) == GPIO_PIN_SET)
+        {
+            response = 1;
+        }
+    }
+
+    while(HAL_GPIO_ReadPin(DHT11_PORT, DHT11_PIN) == GPIO_PIN_SET);
+
+    return response;
+}
+
+/*----------------------------------------------------------*/
+
+/* Read One Byte from DHT11 */
+static uint8_t DHT11_ReadByte(void)
+{
+    uint8_t i;
+    uint8_t data = 0;
+
+    for(i = 0; i < 8; i++)
+    {
+        /* Wait until pin goes HIGH */
+        while(HAL_GPIO_ReadPin(DHT11_PORT, DHT11_PIN) == GPIO_PIN_RESET);
+
+        /* Wait 40us */
+        DHT11_DelayUs(40);
+
+        if(HAL_GPIO_ReadPin(DHT11_PORT, DHT11_PIN) == GPIO_PIN_SET)
+        {
+            data |= (1 << (7 - i));
+        }
+
+        /* Wait until pin goes LOW */
+        while(HAL_GPIO_ReadPin(DHT11_PORT, DHT11_PIN) == GPIO_PIN_SET);
+    }
+
+    return data;
+}
+/*----------------------------------------------------------*/
+
+HAL_StatusTypeDef DHT11_ReadData(SensorData_t *Sensor)
+{
+    uint8_t HumInt;
+    uint8_t HumDec;
+    uint8_t TempInt;
+    uint8_t TempDec;
+    uint8_t Checksum;
+//
+//    if(DHT11_StartSignal() == 0)
+//    {
+//        return HAL_ERROR;
+//    }
+
+
+    if(DHT11_StartSignal() == 0)
+    {
+        printf("START FAIL\r\n");
+        return HAL_ERROR;
+    }
+
+    HumInt   = DHT11_ReadByte();
+    HumDec   = DHT11_ReadByte();
+    TempInt  = DHT11_ReadByte();
+    TempDec  = DHT11_ReadByte();
+    Checksum = DHT11_ReadByte();
+
+//    if(((HumInt + HumDec + TempInt + TempDec) & 0xFF) != Checksum)
+//    {
+//        return HAL_ERROR;
+//    }
+
+    if(((HumInt + HumDec + TempInt + TempDec) & 0xFF) != Checksum)
+    {
+        printf("CHECKSUM FAIL\r\n");
+        return HAL_ERROR;
+    }
+
+    Sensor->Humidity = HumInt;
+    Sensor->Temperature = TempInt;
+
+    return HAL_OK;
+}

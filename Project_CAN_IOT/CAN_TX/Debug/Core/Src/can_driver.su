@@ -1,0 +1,2 @@
+../Core/Src/can_driver.c:26:6:CAN_Driver_Init	8	static
+../Core/Src/can_driver.c:57:6:CAN_SendPacket	24	static

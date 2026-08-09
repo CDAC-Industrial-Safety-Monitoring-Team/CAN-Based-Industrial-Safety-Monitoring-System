@@ -2,7 +2,7 @@
  * safety_monitor.c
  *
  *  Created on: 19-Jul-2026
- *       Author: Moeen Sheikh
+ *      Author: Moeen Sheikh
  */
 
 #include "safety_monitor.h"

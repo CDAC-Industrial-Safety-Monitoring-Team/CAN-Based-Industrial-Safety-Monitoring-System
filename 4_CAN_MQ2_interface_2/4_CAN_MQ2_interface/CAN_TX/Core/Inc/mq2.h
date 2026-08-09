@@ -11,8 +11,10 @@
 #include "main.h"
 #include "common.h"
 
-#define MQ2_THRESHOLD    900
+/* MQ2 Analog Threshold */
+#define MQ2_THRESHOLD    1800
 
+/* Function Prototypes */
 HAL_StatusTypeDef MQ2_Init(void);
 HAL_StatusTypeDef MQ2_ReadData(SensorData_t *Sensor);
 

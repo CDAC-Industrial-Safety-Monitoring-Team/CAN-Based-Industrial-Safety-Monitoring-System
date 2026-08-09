@@ -10,8 +10,7 @@
 extern ADC_HandleTypeDef hadc1;
 
 /*----------------------------------------------------------*/
-/* MQ2 initialization                                        */
-/* GPIO is already configured by CubeMX                     */
+/* MQ2 initialization                                       */
 /*----------------------------------------------------------*/
 HAL_StatusTypeDef MQ2_Init(void)
 {
@@ -19,41 +18,39 @@ HAL_StatusTypeDef MQ2_Init(void)
 }
 
 /*----------------------------------------------------------*/
-/* Read MQ2 analog + digital                                */
+/* Read MQ2 Analog Value Only                               */
 /*----------------------------------------------------------*/
 HAL_StatusTypeDef MQ2_ReadData(SensorData_t *Sensor)
 {
     uint16_t adc_value;
-    GPIO_PinState gas;
 
     /* Start ADC conversion */
     HAL_ADC_Start(&hadc1);
 
-    /* Wait until conversion completes */
-    if(HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
-    {
-        adc_value = HAL_ADC_GetValue(&hadc1);
-    }
-    else
+    /* Wait for conversion */
+    if(HAL_ADC_PollForConversion(&hadc1, 10) != HAL_OK)
     {
         HAL_ADC_Stop(&hadc1);
         return HAL_ERROR;
     }
 
+    /* Read ADC value */
+    adc_value = HAL_ADC_GetValue(&hadc1);
+
     /* Stop ADC */
     HAL_ADC_Stop(&hadc1);
 
-    /* Store raw ADC value */
+    /* Store ADC value */
     Sensor->GasRaw = adc_value;
 
-    /* Read digital output (PB0) */
-    gas = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_0);
-
-    /* Gas detection logic */
-    if((adc_value > MQ2_THRESHOLD) ||
-       (gas == GPIO_PIN_RESET))
+    /*--------------------------------------------------
+      Analog Threshold Detection
+      ADC >= 1800  -> Gas Detected (Unsafe)
+      ADC < 1800   -> Safe
+    ---------------------------------------------------*/
+    if(adc_value >= MQ2_THRESHOLD)
     {
-        Sensor->GasDetected = 0;      // Gas detected (Unsafe)
+        Sensor->GasDetected = 0;      // Gas Detected
     }
     else
     {

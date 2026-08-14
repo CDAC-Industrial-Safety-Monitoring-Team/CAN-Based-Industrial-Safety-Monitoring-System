@@ -1,0 +1,2 @@
+../Core/Src/mq2.c:15:19:MQ2_Init	4	static
+../Core/Src/mq2.c:23:19:MQ2_ReadData	24	static

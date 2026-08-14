@@ -1,0 +1,61 @@
+/*
+ * can_driver.c
+ *
+ *  Created on: 19-Jul-2026
+ *      Author: Moeen Sheikh
+ */
+
+#include "can_driver.h"
+
+extern CAN_HandleTypeDef hcan1;
+
+static CAN_RxHeaderTypeDef RxHeader;
+static uint8_t RxData[8];
+
+void CAN_Driver_Init(void)
+{
+	CAN_FilterTypeDef CANFilter;
+
+	CANFilter.FilterActivation = ENABLE;
+	CANFilter.FilterBank = 0;
+	CANFilter.FilterFIFOAssignment = CAN_FILTER_FIFO0;
+	CANFilter.FilterIdHigh = 0x0000;
+	CANFilter.FilterIdLow = 0x0000;
+	CANFilter.FilterMaskIdHigh = 0x0000;
+	CANFilter.FilterMaskIdLow = 0x0000;
+	CANFilter.FilterMode = CAN_FILTERMODE_IDMASK;
+	CANFilter.FilterScale = CAN_FILTERSCALE_32BIT;
+
+	if (HAL_CAN_ConfigFilter(&hcan1, &CANFilter) != HAL_OK)
+	{
+	    Error_Handler();
+	}
+
+	if (HAL_CAN_Start(&hcan1) != HAL_OK)
+	{
+	    Error_Handler();
+	}
+
+}
+
+HAL_StatusTypeDef CAN_ReceiveStatus(SystemStatus_t *Status)
+{
+	if (HAL_CAN_GetRxFifoFillLevel(&hcan1, CAN_RX_FIFO0) == 0)
+	{
+		return HAL_ERROR;
+	}
+
+	if (HAL_CAN_GetRxMessage(&hcan1,
+	                         CAN_RX_FIFO0,
+	                         &RxHeader,
+	                         RxData) != HAL_OK)
+	{
+		return HAL_ERROR;
+	}
+
+	*Status = (SystemStatus_t)RxData[0];
+
+	return HAL_OK;
+}
+
+
